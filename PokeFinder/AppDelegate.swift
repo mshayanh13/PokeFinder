@@ -13,10 +13,12 @@ import Firebase
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-
+    var pokemons = [Pokemon]()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        
+        parsePokemonCSV()
         
         FIRApp.configure()
         return true
@@ -44,6 +46,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
 
+    func parsePokemonCSV() {
+        
+        let bundle = Bundle.main.path(forResource: "pokemon", ofType: "csv")!
+        
+        do {
+            let csv = try CSV(contentsOfURL: bundle)
+            let rows = csv.rows
+            //print(rows)
+            
+            for row in rows {
+                if let rowId = row["id"], let name = row["identifier"], let pokeId = Int(rowId) {
+                    
+                    let pokemon = Pokemon(name: name, pokedexId: pokeId)
+                    pokemons.append(pokemon)
+                    
+                }
+            }
+            
+        } catch {
+            let error = error as NSError
+            print(error.debugDescription)
+        }
+    }
 
 }
+
+var ad = UIApplication.shared.delegate as! AppDelegate
+var pokemons = ad.pokemons
+
 

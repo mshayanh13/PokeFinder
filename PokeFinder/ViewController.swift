@@ -18,6 +18,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     var mapHasCenteredOnce = false
     var geoFire: GeoFire!
     var geoFireReference: FIRDatabaseReference!
+    var pokemonSelected: Pokemon?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,6 +34,17 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         super.viewDidAppear(animated)
         
         locationAuthStatus()
+        
+        if let pokemonSelected = pokemonSelected {
+            
+            let location = CLLocation(latitude: mapView.centerCoordinate.latitude, longitude: mapView.centerCoordinate.longitude)
+            
+            createSighting(forLocation: location, withPokemon: pokemonSelected.pokedexId)
+            
+            self.pokemonSelected = nil
+        }
+        
+        
     }
     
     func locationAuthStatus() {
@@ -87,7 +99,7 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
             let button = UIButton()
             button.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
             button.setImage(UIImage(named: "map"), for: .normal)
-            annotationView.rightCalloutAccessoryView = btn
+            annotationView.rightCalloutAccessoryView = button
             
         }
         
@@ -106,8 +118,8 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
         
         _ = circleQuery?.observe(.keyEntered, with: { (key, location) in
             
-            if let key = key, let location = location {
-                let annotation = PokeAnnotation(coordinate: location.coordinate, pokemonNumber: Int(key)!)
+            if let keyString = key, let key = Int(keyString), let location = location {
+                let annotation = PokeAnnotation(coordinate: location.coordinate, pokemon: pokemons[key - 1])
                 self.mapView.addAnnotation(annotation)
             }
             
@@ -125,25 +137,28 @@ class ViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDele
     func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
         
         if let annotation = view.annotation as? PokeAnnotation {
-            let place = MKPlacemark(coordinate: annotation.coordinate)
+            
+            var place: MKPlacemark!
+            if #available(iOS 10.0, *) {
+                place = MKPlacemark(coordinate: annotation.coordinate)
+            } else {
+                place = MKPlacemark(coordinate: annotation.coordinate, addressDictionary: nil)
+            }
             let destination = MKMapItem(placemark: place)
-            destination.name = "Pokemon Sighting"
+            destination.name = pokemonSelected?.name
             let regionDistance: CLLocationDistance = 1000
             let regionSpan = MKCoordinateRegionMakeWithDistance(annotation.coordinate, regionDistance, regionDistance)
             
-            let options = [MKLaunchOptionsMapCenterKey: NSValue(mkCoordinate: regionSpan.center), MKLaunchOptionsMapSpanKey: NSValue(mkCoordinateSpan: regionSpan.span), MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
+            let options = [MKLaunchOptionsMapCenterKey: NSValue(mkCoordinate: regionSpan.center), MKLaunchOptionsMapSpanKey: NSValue(mkCoordinateSpan: regionSpan.span), MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving] as [String : Any]
             
             MKMapItem.openMaps(with: [destination], launchOptions: options)
         }
         
     }
     
-    @IBAction func spotRandomPokemon(_ sender: UIButton) {
+    @IBAction func spotPokemon(_ sender: UIButton) {
         
-        let location = CLLocation(latitude: mapView.centerCoordinate.latitude, longitude: mapView.centerCoordinate.longitude)
-        
-        let randomNumber = arc4random_uniform(151) + 1
-        createSighting(forLocation: location, withPokemon: Int(randomNumber))
+        performSegue(withIdentifier: "PokemonListVC", sender: nil)
         
     }
 
